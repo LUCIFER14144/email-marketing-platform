@@ -43,9 +43,9 @@ const upload = multer({
 const htmlUpload = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => {
-      // Ensure we have a userIP, fallback to 'unknown' if not available
-      const userIP = req.userIP || 'unknown';
-      const userDir = path.join(__dirname, '../uploads/html', userIP);
+      // Use username from session, fallback to 'unknown' if not available
+      const username = req.session?.userId || req.userIP || 'unknown';
+      const userDir = path.join(__dirname, '../uploads/html', username);
       
       try {
         if (!fs.existsSync(userDir)) {
@@ -188,9 +188,18 @@ const loadEmailProviders = () => {
 };
 
 // Create transporter for specific provider
-const createTransporter = (providerId) => {
-  const providers = loadEmailProviders();
-  const provider = providers[providerId];
+const createTransporter = (providerId, username = null) => {
+  let provider;
+  
+  if (username) {
+    // Get provider from user-specific or environment providers
+    const providers = getEmailProviders(username);
+    provider = providers[providerId];
+  } else {
+    // Fallback to environment providers only
+    const providers = loadEmailProviders();
+    provider = providers[providerId];
+  }
   
   if (!provider) {
     throw new Error(`Email provider '${providerId}' not found`);
@@ -215,10 +224,10 @@ const createTransporter = (providerId) => {
 };
 
 // Get available email providers for a specific user
-const getEmailProviders = (userIP) => {
+const getEmailProviders = (username) => {
   const envProviders = loadEmailProviders();
-  const userSpecificProviders = userProviders[userIP] || {};
-  return { ...envProviders, ...uploadedProviders, ...userSpecificProviders };
+  const userSpecificProviders = userDataByUsername[username]?.providers || {};
+  return { ...envProviders, ...userSpecificProviders };
 };
 
 // Parse SMTP configuration from uploaded file
@@ -504,12 +513,17 @@ app.get('/api/user-session', (req, res) => {
 // Get available email providers for current user
 app.get('/api/providers', (req, res) => {
   try {
-    const providers = getEmailProviders(req.userIP);
+    if (!req.session.userId) {
+      return res.status(401).json({ success: false, error: 'Not authenticated' });
+    }
+    
+    const providers = getEmailProviders(req.session.userId);
     const providerList = Object.values(providers).map(provider => ({
       id: provider.id,
       label: provider.label,
       user: provider.user
     }));
+    console.log(`[${req.session.userId}] Providers loaded:`, providerList.length);
     res.json({ success: true, providers: providerList });
   } catch (error) {
     console.error('Error loading providers:', error);
@@ -522,19 +536,22 @@ app.post('/api/upload-html', htmlUpload.array('htmlFiles', 10), (req, res) => {
   try {
     console.log('HTML upload request received');
     console.log('Files:', req.files);
-    console.log('User IP:', req.userIP);
+    console.log('User:', req.session.userId);
+    
+    if (!req.session.userId) {
+      return res.status(401).json({ success: false, error: 'Not authenticated' });
+    }
     
     if (!req.files || req.files.length === 0) {
       console.log('No files received');
       return res.status(400).json({ success: false, error: 'No HTML files uploaded' });
     }
     
-    const userIP = req.userIP;
+    const username = req.session.userId;
     
-    // Ensure user HTML files array exists
-    if (!userHtmlFiles[userIP]) {
-      console.log('Initializing userHtmlFiles for IP:', userIP);
-      userHtmlFiles[userIP] = [];
+    // Ensure user data exists
+    if (!userDataByUsername[username]) {
+      userDataByUsername[username] = { htmlFiles: [], providers: {}, campaigns: {} };
     }
     
     const uploadedFiles = [];
@@ -546,15 +563,17 @@ app.post('/api/upload-html', htmlUpload.array('htmlFiles', 10), (req, res) => {
         filename: file.filename,
         filePath: file.path,
         uploadedAt: new Date(),
-        deviceType: req.body[`deviceType_${file.originalname}`] || 'both', // desktop, mobile, or both
+        deviceType: req.body[`deviceType_${file.originalname}`] || 'both',
         description: req.body[`description_${file.originalname}`] || '',
-        publicUrl: `${req.protocol}://${req.get('host')}/view/${userIP}/${file.filename}`,
-        smartUrl: `${req.protocol}://${req.get('host')}/smart/${userIP}/${file.filename.split('-')[1] || file.filename}`
+        publicUrl: `${req.protocol}://${req.get('host')}/view/${username}/${file.filename}`,
+        smartUrl: `${req.protocol}://${req.get('host')}/smart/${username}/${file.filename.split('-')[1] || file.filename}`
       };
       
       uploadedFiles.push(fileInfo);
-      userHtmlFiles[userIP].push(fileInfo);
+      userDataByUsername[username].htmlFiles.push(fileInfo);
     });
+    
+    console.log(`[${username}] Uploaded ${uploadedFiles.length} files. Total files now: ${userDataByUsername[username].htmlFiles.length}`);
     
     res.json({
       success: true,
@@ -609,6 +628,10 @@ app.post('/api/update-html-device', (req, res) => {
 // Upload SMTP configuration file (user-specific)
 app.post('/api/upload-smtp', upload.single('smtpFile'), (req, res) => {
   try {
+    if (!req.session.userId) {
+      return res.status(401).json({ success: false, error: 'Not authenticated' });
+    }
+    
     if (!req.file) {
       return res.status(400).json({ success: false, error: 'No file uploaded' });
     }
@@ -616,9 +639,17 @@ app.post('/api/upload-smtp', upload.single('smtpFile'), (req, res) => {
     const fileType = path.extname(req.file.originalname).toLowerCase().substring(1);
     const newProviders = parseSmtpFile(req.file.path, fileType);
     
+    const username = req.session.userId;
+    
+    // Ensure user data exists
+    if (!userDataByUsername[username]) {
+      userDataByUsername[username] = { htmlFiles: [], providers: {}, campaigns: {} };
+    }
+    
     // Store providers for this specific user
-    const userIP = req.userIP;
-    userProviders[userIP] = { ...userProviders[userIP], ...newProviders };
+    userDataByUsername[username].providers = { ...userDataByUsername[username].providers, ...newProviders };
+    
+    console.log(`[${username}] Loaded ${Object.keys(newProviders).length} SMTP providers. Total: ${Object.keys(userDataByUsername[username].providers).length}`);
     
     // Clean up uploaded file
     fs.unlinkSync(req.file.path);
@@ -630,7 +661,7 @@ app.post('/api/upload-smtp', upload.single('smtpFile'), (req, res) => {
     });
   } catch (error) {
     console.error('Error processing SMTP file:', error);
-    res.status(500).json({ success: false, error: 'Failed to process SMTP file' });
+    res.status(500).json({ success: false, error: 'Failed to process SMTP file: ' + error.message });
   }
 });
 
@@ -661,6 +692,10 @@ app.post('/api/upload-emails', upload.single('emailFile'), async (req, res) => {
 
 // Bulk email sending
 app.post('/api/send-bulk', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ success: false, error: 'Not authenticated' });
+  }
+  
   const { providerId, subject, message, from, emailList, trackingEnabled = true } = req.body;
   
   if (!providerId || !subject || !message || !emailList || !Array.isArray(emailList)) {
@@ -684,17 +719,20 @@ app.post('/api/send-bulk', async (req, res) => {
   };
   
   try {
-    const providers = getEmailProviders(req.userIP);
+    const username = req.session.userId;
+    const providers = getEmailProviders(username);
     const selectedProvider = providers[providerId];
+    
+    console.log(`[${username}] Starting bulk email campaign. Provider: ${providerId}`);
     
     if (!selectedProvider) {
       return res.status(400).json({ 
         success: false, 
-        error: 'Selected email provider not found' 
+        error: 'Selected email provider not found. Please upload SMTP configuration first.' 
       });
     }
     
-    const transporter = createTransporter(providerId);
+    const transporter = createTransporter(providerId, username);
     const results = [];
     
     // Send emails with delay to avoid rate limiting
@@ -843,6 +881,10 @@ app.get('/api/campaigns', (req, res) => {
 });
 
 app.post('/send-email', async (req, res) => {
+  if (!req.session.userId) {
+    return res.status(401).json({ success: false, error: 'Not authenticated' });
+  }
+  
   const { to, subject, message, from, providerId } = req.body;
 
   // Input validation
@@ -871,17 +913,18 @@ app.post('/send-email', async (req, res) => {
   }
 
   try {
-    const providers = getEmailProviders(req.userIP);
+    const username = req.session.userId;
+    const providers = getEmailProviders(username);
     const selectedProvider = providers[providerId];
     
     if (!selectedProvider) {
       return res.status(400).json({ 
         success: false, 
-        error: 'Selected email provider not found' 
+        error: 'Selected email provider not found. Please upload SMTP configuration first.' 
       });
     }
 
-    const transporter = createTransporter(providerId);
+    const transporter = createTransporter(providerId, username);
     
     const mailOptions = {
       from: from ? `${from} <${selectedProvider.user}>` : selectedProvider.user,
@@ -975,7 +1018,15 @@ app.get('/view/:userIP/:filename', (req, res) => {
 
 // List user's HTML files
 app.get('/api/html-files', (req, res) => {
-  const userFiles = userHtmlFiles[req.userIP] || [];
+  if (!req.session.userId) {
+    return res.status(401).json({ success: false, error: 'Not authenticated' });
+  }
+  
+  const username = req.session.userId;
+  const userFiles = userDataByUsername[username]?.htmlFiles || [];
+  
+  console.log(`[${username}] Fetching HTML files. Total: ${userFiles.length}`);
+  
   res.json({
     success: true,
     files: userFiles.map(file => ({
@@ -993,15 +1044,23 @@ app.get('/api/html-files', (req, res) => {
 // Delete HTML file
 app.delete('/api/html-files/:fileId', (req, res) => {
   try {
-    const { fileId } = req.params;
-    const userIP = req.userIP;
+    if (!req.session.userId) {
+      return res.status(401).json({ success: false, error: 'Not authenticated' });
+    }
     
-    const fileIndex = userHtmlFiles[userIP].findIndex(f => f.id === fileId);
+    const { fileId } = req.params;
+    const username = req.session.userId;
+    
+    if (!userDataByUsername[username]?.htmlFiles) {
+      return res.status(404).json({ success: false, error: 'File not found' });
+    }
+    
+    const fileIndex = userDataByUsername[username].htmlFiles.findIndex(f => f.id === fileId);
     if (fileIndex === -1) {
       return res.status(404).json({ success: false, error: 'File not found' });
     }
     
-    const file = userHtmlFiles[userIP][fileIndex];
+    const file = userDataByUsername[username].htmlFiles[fileIndex];
     
     // Delete physical file
     if (fs.existsSync(file.filePath)) {
@@ -1009,7 +1068,7 @@ app.delete('/api/html-files/:fileId', (req, res) => {
     }
     
     // Remove from array
-    userHtmlFiles[userIP].splice(fileIndex, 1);
+    userDataByUsername[username].htmlFiles.splice(fileIndex, 1);
     
     res.json({ success: true, message: 'File deleted successfully' });
   } catch (error) {
