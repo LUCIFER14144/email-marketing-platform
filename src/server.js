@@ -110,7 +110,10 @@ app.use(session({
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-app.use(express.static(path.join(__dirname, '../public')));
+// Serve static files from public directory
+const publicPath = path.resolve(__dirname, '..', 'public');
+console.log('Public path:', publicPath);
+app.use(express.static(publicPath));
 
 // Middleware to create user session based on IP
 app.use((req, res, next) => {
@@ -478,7 +481,9 @@ const requireAuth = (req, res, next) => {
 
 // Routes
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public', 'index.html'));
+  const indexPath = path.resolve(__dirname, '..', 'public', 'index.html');
+  console.log('Sending index.html from:', indexPath);
+  res.sendFile(indexPath);
 });
 
 // Get user session info
@@ -1015,7 +1020,8 @@ app.delete('/api/html-files/:fileId', (req, res) => {
 
 // Serve invoice template (legacy)
 app.get('/invoice', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public', 'invoice.html'));
+  const invoicePath = path.resolve(__dirname, '..', 'public', 'invoice.html');
+  res.sendFile(invoicePath);
 });
 
 // Health check endpoint
