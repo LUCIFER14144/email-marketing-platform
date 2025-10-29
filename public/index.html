@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Sender</title>
+    <link rel="stylesheet" href="styles.css">
+    <script>
+        // Check authentication before loading page
+        fetch('/api/auth/status')
+            .then(res => res.json())
+            .then(data => {
+                if (!data.authenticated) {
+                    window.location.href = '/login.html';
+                } else {
+                    // Store user info for use in the app
+                    window.currentUser = data.user;
+                }
+            })
+            .catch(() => {
+                window.location.href = '/login.html';
+            });
+    </script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-top">
+                <div class="header-title">
+                    <h1>📧 Advanced Email Sender</h1>
+                    <p>Professional bulk email sending with tracking, file uploads, and global access</p>
+                </div>
+                <div class="user-profile">
+                    <span id="username-display">Loading...</span>
+                    <button onclick="handleLogout()" class="logout-btn">Logout</button>
+                </div>
+            </div>
+            <div class="header-tabs">
+                <button class="tab-btn active" data-tab="single">Single Email</button>
+                <button class="tab-btn" data-tab="bulk">Bulk Email</button>
+                <button class="tab-btn" data-tab="builder">Button Builder</button>
+                <button class="tab-btn" data-tab="upload">Upload Files</button>
+                <button class="tab-btn" data-tab="stats">Statistics</button>
+            </div>
+        </div>
+
+        <!-- Single Email Tab -->
+        <div id="single-tab" class="tab-content active">
+            <form id="emailForm" class="email-form">
+                <div class="form-group">
+                    <label for="providerId">Email Provider:</label>
+                    <select id="providerId" name="providerId" required>
+                        <option value="">Select an email provider...</option>
+                    </select>
+                    <div class="provider-info" id="providerInfo" style="display: none;">
+                        <small>📧 Sending from: <span id="providerEmail"></span></small>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="from">Your Name (Optional):</label>
+                    <input type="text" id="from" name="from" placeholder="Enter your name">
+                </div>
+
+                <div class="form-group">
+                    <label for="to">To Email Address:</label>
+                    <input type="email" id="to" name="to" required placeholder="recipient@example.com">
+                </div>
+
+                <div class="form-group">
+                    <label for="subject">Subject:</label>
+                    <input type="text" id="subject" name="subject" required placeholder="Enter email subject">
+                </div>
+
+                <div class="form-group">
+                    <label for="message">Message (HTML supported):</label>
+                    <textarea id="message" name="message" rows="8" required placeholder="Enter your message here... You can use HTML tags and links for tracking."></textarea>
+                    
+                    <div class="button-builder">
+                        <h4>🔘 Button Builder</h4>
+                        <div class="builder-row">
+                            <input type="text" id="buttonText" placeholder="Button Text (e.g., View Invoice)" class="builder-input">
+                            <input type="url" id="buttonLink" placeholder="Button Link (e.g., http://localhost:3000/invoice)" class="builder-input">
+                            <select id="buttonStyle" class="builder-select">
+                                <option value="primary">Primary (Blue)</option>
+                                <option value="success">Success (Green)</option>
+                                <option value="warning">Warning (Orange)</option>
+                                <option value="danger">Danger (Red)</option>
+                                <option value="custom">Custom</option>
+                            </select>
+                            <button type="button" id="insertButton" class="insert-btn">Insert Button</button>
+                        </div>
+                        <div id="customColors" class="custom-colors" style="display: none;">
+                            <input type="color" id="bgColor" value="#007bff" title="Background Color">
+                            <input type="color" id="textColor" value="#ffffff" title="Text Color">
+                        </div>
+                    </div>
+                    
+                    <small>💡 Tip: Links and buttons in your message will be automatically tracked!</small>
+                </div>
+
+                <button type="submit" id="sendBtn" class="send-btn">
+                    <span class="btn-text">Send Email</span>
+                    <span class="spinner" style="display: none;">⏳</span>
+                </button>
+            </form>
+        </div>
+
+        <!-- Bulk Email Tab -->
+        <div id="bulk-tab" class="tab-content">
+            <form id="bulkEmailForm" class="email-form">
+                <div class="form-group">
+                    <label for="bulkProviderId">Email Provider:</label>
+                    <select id="bulkProviderId" name="providerId" required>
+                        <option value="">Select an email provider...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="emailListFile">Upload Email List:</label>
+                    <input type="file" id="emailListFile" accept=".txt,.csv,.json" required>
+                    <small>Supported formats: .txt (one email per line), .csv (email,name), .json</small>
+                    <div id="emailPreview" class="file-preview"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="bulkFrom">Your Name (Optional):</label>
+                    <input type="text" id="bulkFrom" name="from" placeholder="Enter your name">
+                </div>
+
+                <div class="form-group">
+                    <label for="bulkSubject">Subject:</label>
+                    <input type="text" id="bulkSubject" name="subject" required placeholder="Enter email subject">
+                </div>
+
+                <div class="form-group">
+                    <label for="bulkMessage">Message (HTML supported):</label>
+                    <textarea id="bulkMessage" name="message" rows="8" required placeholder="Enter your bulk email message... Links will be tracked automatically!"></textarea>
+                    
+                    <div class="button-builder">
+                        <h4>🔘 Button Builder</h4>
+                        <div class="builder-row">
+                            <input type="text" id="bulkButtonText" placeholder="Button Text (e.g., View Invoice)" class="builder-input">
+                            <input type="url" id="bulkButtonLink" placeholder="Button Link (e.g., http://localhost:3000/invoice)" class="builder-input">
+                            <select id="bulkButtonStyle" class="builder-select">
+                                <option value="primary">Primary (Blue)</option>
+                                <option value="success">Success (Green)</option>
+                                <option value="warning">Warning (Orange)</option>
+                                <option value="danger">Danger (Red)</option>
+                                <option value="custom">Custom</option>
+                            </select>
+                            <button type="button" id="insertBulkButton" class="insert-btn">Insert Button</button>
+                        </div>
+                        <div id="bulkCustomColors" class="custom-colors" style="display: none;">
+                            <input type="color" id="bulkBgColor" value="#007bff" title="Background Color">
+                            <input type="color" id="bulkTextColor" value="#ffffff" title="Text Color">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="trackingEnabled" checked>
+                        Enable click tracking and open rate monitoring
+                    </label>
+                </div>
+
+                <button type="submit" id="bulkSendBtn" class="send-btn">
+                    <span class="btn-text">Send Bulk Email</span>
+                    <span class="spinner" style="display: none;">⏳</span>
+                </button>
+            </form>
+
+            <div id="bulkProgress" class="progress-section" style="display: none;">
+                <h3>📊 Sending Progress</h3>
+                <div class="progress-bar">
+                    <div id="progressFill" class="progress-fill"></div>
+                </div>
+                <div id="progressText">Preparing...</div>
+            </div>
+        </div>
+
+        <!-- Button Builder Tab -->
+        <div id="builder-tab" class="tab-content">
+            <div class="email-form">
+                <h3>🔗 Smart Button Builder</h3>
+                <p>Create professional buttons with device-specific links and tracking capabilities</p>
+                
+                <!-- Link Source Selection -->
+                <div class="form-group">
+                    <label>Link Source:</label>
+                    <div class="radio-group">
+                        <label><input type="radio" name="linkSource" value="external" checked> External URL</label>
+                        <label><input type="radio" name="linkSource" value="uploaded"> Uploaded HTML File</label>
+                    </div>
+                </div>
+                
+                <!-- External URL Section -->
+                <div id="externalUrlSection">
+                    <div class="form-group">
+                        <label for="buttonUrl">Button URL:</label>
+                        <input type="url" id="buttonUrl" placeholder="https://example.com">
+                    </div>
+                </div>
+                
+                <!-- Uploaded HTML Section -->
+                <div id="uploadedHtmlSection" style="display: none;">
+                    <div class="form-group">
+                        <label for="desktopHtml">Desktop HTML File:</label>
+                        <select id="desktopHtml">
+                            <option value="">Select HTML file for desktop users...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="mobileHtml">Mobile HTML File (Optional):</label>
+                        <select id="mobileHtml">
+                            <option value="">Select HTML file for mobile users...</option>
+                        </select>
+                    </div>
+                    <small>💡 If only one file is selected, it will be used for both desktop and mobile devices. For smart routing, select different files for each device type.</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="buttonText">Button Text:</label>
+                    <input type="text" id="buttonText" placeholder="Click Here" value="Click Here">
+                </div>
+                
+                <div class="form-group">
+                    <label for="buttonStyle">Button Style:</label>
+                    <select id="buttonStyle">
+                        <option value="primary">Primary (Blue)</option>
+                        <option value="success">Success (Green)</option>
+                        <option value="danger">Danger (Red)</option>
+                        <option value="warning">Warning (Orange)</option>
+                        <option value="custom">Custom</option>
+                    </select>
+                </div>
+                
+                <div id="customColorSection" style="display: none;">
+                    <div class="form-group">
+                        <label for="buttonBgColor">Background Color:</label>
+                        <input type="color" id="buttonBgColor" value="#007bff">
+                    </div>
+                    <div class="form-group">
+                        <label for="buttonTextColor">Text Color:</label>
+                        <input type="color" id="buttonTextColor" value="#ffffff">
+                    </div>
+                </div>
+                
+                <button type="button" onclick="generateButton()" class="send-btn">Generate Smart Button</button>
+                
+                <div id="buttonPreview" class="button-preview" style="display: none;">
+                    <h4>Preview:</h4>
+                    <div id="previewContainer"></div>
+                    <small id="buttonInfo" style="display: block; margin-top: 10px; font-style: italic;"></small>
+                </div>
+                
+                <div id="buttonCode" class="button-code" style="display: none;">
+                    <h4>HTML Code:</h4>
+                    <textarea id="buttonHtml" rows="8" readonly style="width: 100%; font-family: monospace; font-size: 0.9em;"></textarea>
+                    <div style="margin-top: 10px; display: flex; gap: 10px;">
+                        <button type="button" onclick="copyButtonCode()" class="send-btn" style="flex: 1;">Copy Code</button>
+                        <button type="button" onclick="insertButtonToBody()" class="send-btn" style="flex: 1;">Insert to Email</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Upload Files Tab -->
+        <div id="upload-tab" class="tab-content">
+            <!-- User Session Info -->
+            <div class="user-session">
+                <h3>👤 Your Session</h3>
+                <div id="sessionInfo">Loading session information...</div>
+            </div>
+
+            <!-- HTML File Upload -->
+            <div class="upload-section">
+                <h3>🌐 Upload HTML Files</h3>
+                <p>Upload your custom HTML files to create smart links that work on both mobile and desktop devices.</p>
+                <form id="htmlUploadForm" enctype="multipart/form-data">
+                    <div class="form-group">
+                        <label for="htmlFiles">HTML Files (Select multiple):</label>
+                        <input type="file" id="htmlFiles" name="htmlFiles" accept=".html,.htm" multiple required>
+                        <small>You can select multiple HTML files at once. Each file can be configured for desktop, mobile, or both devices.</small>
+                    </div>
+                    <button type="submit" class="upload-btn">Upload HTML Files</button>
+                </form>
+                
+                <!-- HTML File Manager -->
+                <div id="htmlFileManager" class="file-manager">
+                    <h4>📁 Your HTML Files</h4>
+                    <div id="htmlFilesList">No HTML files uploaded yet.</div>
+                </div>
+            </div>
+
+            <div class="upload-section">
+                <h3>📁 Upload SMTP Configuration</h3>
+                <form id="smtpUploadForm">
+                    <div class="form-group">
+                        <label for="smtpFile">SMTP Configuration File:</label>
+                        <input type="file" id="smtpFile" accept=".txt,.json" required>
+                        <small>
+                            Formats:<br>
+                            • <strong>TXT:</strong> PROVIDER_NAME|service|user|password|label|host|port<br>
+                            • <strong>JSON:</strong> {"PROVIDER1": {"service": "gmail", "user": "email", "password": "pass"}}
+                        </small>
+                    </div>
+                    <button type="submit" class="upload-btn">Upload SMTP Config</button>
+                </form>
+            </div>
+
+            <div class="upload-section">
+                <h3>📧 Test Email List Upload</h3>
+                <form id="emailUploadForm">
+                    <div class="form-group">
+                        <label for="emailFile">Email List File:</label>
+                        <input type="file" id="emailFile" accept=".txt,.csv,.json">
+                        <small>
+                            Formats:<br>
+                            • <strong>TXT:</strong> One email per line or email|name<br>
+                            • <strong>CSV:</strong> Headers: email,name<br>
+                            • <strong>JSON:</strong> [{"email": "test@example.com", "name": "Name"}]
+                        </small>
+                    </div>
+                    <button type="submit" class="upload-btn">Test Email List</button>
+                </form>
+                <div id="emailListPreview" class="file-preview"></div>
+            </div>
+        </div>
+
+        <!-- Statistics Tab -->
+        <div id="stats-tab" class="tab-content">
+            <div class="stats-section">
+                <h3>📈 Email Campaign Statistics</h3>
+                <div id="campaignsList" class="campaigns-list">
+                    <p>No campaigns yet. Send a bulk email to see statistics here.</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="result" class="result" style="display: none;"></div>
+
+        <div class="info-section">
+            <h3>� Advanced Features</h3>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <h4>📁 File Upload</h4>
+                    <p>Upload SMTP configs and email lists from files</p>
+                </div>
+                <div class="feature-card">
+                    <h4>📧 Bulk Email</h4>
+                    <p>Send to thousands of recipients with progress tracking</p>
+                </div>
+                <div class="feature-card">
+                    <h4>📊 Analytics</h4>
+                    <p>Track open rates, clicks, and campaign performance</p>
+                </div>
+                <div class="feature-card">
+                    <h4>🌍 Global Access</h4>
+                    <p>Access from anywhere in the world</p>
+                </div>
+            </div>
+            
+            <div class="provider-status" id="providerStatus">
+                <h4>📡 Available Providers</h4>
+                <div id="providersList">Loading...</div>
+            </div>
+
+            <div class="setup-info">
+                <h4>📋 Quick Setup</h4>
+                <ol>
+                    <li>Configure providers in <code>.env</code> file or upload SMTP configs</li>
+                    <li>For bulk emails: Upload your email list (.txt, .csv, .json)</li>
+                    <li>Use button builder to insert tracked buttons with links</li>
+                    <li>Enable tracking to monitor open rates and clicks</li>
+                    <li>Access remotely using your public IP address</li>
+                </ol>
+            </div>
+            
+            <div class="server-info" id="serverInfo">
+                <h4>🌐 Server Access Information</h4>
+                <div id="serverDetails">Loading server information...</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
