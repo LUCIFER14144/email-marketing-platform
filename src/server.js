@@ -8,7 +8,40 @@ const { v4: uuidv4 } = require('uuid');
 const csv = require('csv-parser');
 const session = require('express-session');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 require('dotenv').config();
+
+// Data structures for users and subscriptions
+const pendingVerifications = {};
+const subscriptionPlans = {
+  free: {
+    name: "Free Trial",
+    price: 0,
+    emailLimit: 10,
+    features: ["Basic email sending", "Single template"]
+  },
+  basic: {
+    name: "Basic Plan",
+    price: 9.99,
+    emailLimit: 1000,
+    features: ["Priority support", "Multiple templates", "Email tracking"]
+  },
+  premium: {
+    name: "Premium Plan",
+    price: 29.99,
+    emailLimit: 5000,
+    features: ["Unlimited templates", "Advanced analytics", "API access"]
+  }
+};
+
+const pendingSubscriptions = {};
+
+// Admin credentials (store securely in environment variables in production)
+const ADMIN_CREDENTIALS = {
+  username: process.env.ADMIN_USERNAME || 'admin',
+  password: process.env.ADMIN_PASSWORD || 'admin123', // Change in production
+  email: process.env.ADMIN_EMAIL || 'admin@yourdomain.com'
+};
 
 const app = express();
 const PORT = process.env.PORT || 3000;
