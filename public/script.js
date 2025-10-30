@@ -100,7 +100,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Insert button functionality for single email
     document.getElementById('insertButton').addEventListener('click', function() {
-        const text = document.getElementById('buttonText').value.trim();
+        const text = document.getElementById('quickButtonText').value.trim();
         const link = document.getElementById('buttonLink').value.trim();
         const style = document.getElementById('buttonStyle').value;
         
@@ -113,7 +113,7 @@ document.addEventListener('DOMContentLoaded', function() {
         insertAtCursor(document.getElementById('message'), buttonHtml);
         
         // Clear inputs
-        document.getElementById('buttonText').value = '';
+        document.getElementById('quickButtonText').value = '';
         document.getElementById('buttonLink').value = '';
     });
 
@@ -950,7 +950,10 @@ function generateButton() {
         return;
     }
     
-    const buttonText = document.getElementById('buttonText').value;
+    const buttonText = document.getElementById('buttonText')?.value?.trim();
+    console.log('Button text entered:', buttonText);
+    console.log('Button text element:', document.getElementById('buttonText'));
+    
     const buttonStyle = document.getElementById('buttonStyle').value;
     
     let buttonUrl = '';
