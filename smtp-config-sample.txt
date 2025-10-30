@@ -1,0 +1,53 @@
+SMTP Configuration Format (TXT File)
+=====================================
+
+Format: NAME|service|user|password|label|host|port
+One provider per line
+
+Example Configurations:
+-----------------------
+
+GMAIL1|Gmail|your-email@gmail.com|your-app-password|My Gmail Account
+OUTLOOK1|Outlook|your-email@outlook.com|your-password|My Outlook
+YAHOO1|Yahoo|your-email@yahoo.com|your-password|Yahoo Mail
+CUSTOM1|custom|username@domain.com|password|Business Email|smtp.example.com|587
+
+Field Descriptions:
+-------------------
+1. NAME: Unique identifier (e.g., GMAIL1, SMTP1, PROVIDER1)
+2. service: Gmail, Outlook, Yahoo, or "custom"
+3. user: Your email address or username
+4. password: Your email password or app password
+5. label: Display name (optional, will auto-generate if empty)
+6. host: SMTP host (only for custom service)
+7. port: SMTP port (only for custom service, default: 587)
+
+Gmail App Password Setup:
+------------------------
+1. Go to Google Account settings
+2. Security > 2-Step Verification (must be enabled)
+3. App passwords > Select app: Mail
+4. Select device: Other (Custom name)
+5. Generate and copy the 16-character password (remove spaces)
+
+Outlook/Hotmail:
+----------------
+You can use your regular password, or:
+1. Enable 2FA 
+2. Create an app password in security settings
+
+Sample File (Copy & Edit):
+--------------------------
+GMAIL_PRIMARY|Gmail|john.doe@gmail.com|abcdefghijklmnop|John's Gmail
+OUTLOOK_WORK|Outlook|john@outlook.com|mypassword123|Work Email
+BUSINESS_EMAIL|custom|info@mybusiness.com|securepass456|Business SMTP|smtp.privateemail.com|587
+GMAIL_BACKUP|Gmail|backup@gmail.com|zyxwvutsrqponmlk|Backup Gmail
+
+Tips:
+-----
+- Remove spaces from app passwords
+- Each line = one email account
+- For Gmail/Outlook/Yahoo, you don't need host and port
+- For custom servers, host and port are required
+- Save as .txt file and upload in the Upload Files tab
+

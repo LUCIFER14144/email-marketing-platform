@@ -299,7 +299,7 @@
                 <form id="smtpUploadForm">
                     <div class="form-group">
                         <label for="smtpFile">SMTP Configuration File:</label>
-                        <input type="file" id="smtpFile" accept=".txt,.json" required>
+                        <input type="file" id="smtpFile" name="smtpFile" accept=".txt,.json" required>
                         <small>
                             Formats:<br>
                             • <strong>TXT:</strong> PROVIDER_NAME|service|user|password|label|host|port<br>
@@ -315,7 +315,7 @@
                 <form id="emailUploadForm">
                     <div class="form-group">
                         <label for="emailFile">Email List File:</label>
-                        <input type="file" id="emailFile" accept=".txt,.csv,.json">
+                        <input type="file" id="emailFile" name="emailFile" accept=".txt,.csv,.json">
                         <small>
                             Formats:<br>
                             • <strong>TXT:</strong> One email per line or email|name<br>

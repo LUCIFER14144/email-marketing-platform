@@ -607,21 +607,33 @@ app.use('/api/upload-html', (error, req, res, next) => {
 // Update device type for uploaded HTML
 app.post('/api/update-html-device', (req, res) => {
   try {
-    const { fileId, deviceType, description } = req.body;
-    const userIP = req.userIP;
+    if (!req.session.userId) {
+      return res.status(401).json({ success: false, error: 'Not authenticated' });
+    }
     
-    const fileIndex = userHtmlFiles[userIP].findIndex(f => f.id === fileId);
+    const { fileId, deviceType, description } = req.body;
+    const username = req.session.userId;
+    
+    if (!userDataByUsername[username]?.htmlFiles) {
+      return res.status(404).json({ success: false, error: 'File not found' });
+    }
+    
+    const fileIndex = userDataByUsername[username].htmlFiles.findIndex(f => f.id === fileId);
     if (fileIndex === -1) {
       return res.status(404).json({ success: false, error: 'File not found' });
     }
     
-    userHtmlFiles[userIP][fileIndex].deviceType = deviceType;
-    userHtmlFiles[userIP][fileIndex].description = description;
+    userDataByUsername[username].htmlFiles[fileIndex].deviceType = deviceType;
+    if (description !== undefined) {
+      userDataByUsername[username].htmlFiles[fileIndex].description = description;
+    }
+    
+    console.log(`[${username}] Updated file ${fileId} device type to ${deviceType}`);
     
     res.json({ success: true, message: 'File updated successfully' });
   } catch (error) {
     console.error('Error updating HTML file:', error);
-    res.status(500).json({ success: false, error: 'Failed to update file' });
+    res.status(500).json({ success: false, error: 'Failed to update file: ' + error.message });
   }
 });
 
@@ -1102,16 +1114,25 @@ app.get('/api/server-info', (req, res) => {
     });
   });
 
+  // Detect the actual deployment URL (works for Render, Heroku, etc.)
+  const protocol = req.protocol;
+  const host = req.get('host');
+  const deployedUrl = `${protocol}://${host}`;
+  
+  // Check if we're on a deployed environment (not localhost)
+  const isDeployed = !host.includes('localhost') && !host.includes('127.0.0.1');
+
   res.json({
     success: true,
     serverInfo: {
       port: PORT,
-      localAccess: `http://localhost:${PORT}`,
-      networkAccess: localIPs.map(ip => `http://${ip}:${PORT}`),
+      localAccess: isDeployed ? deployedUrl : `http://localhost:${PORT}`,
+      networkAccess: isDeployed ? [] : localIPs.map(ip => `http://${ip}:${PORT}`),
+      deployedUrl: isDeployed ? deployedUrl : null,
       invoiceUrl: `/invoice`,
       fullInvoiceUrls: {
-        local: `http://localhost:${PORT}/invoice`,
-        network: localIPs.map(ip => `http://${ip}:${PORT}/invoice`)
+        local: isDeployed ? `${deployedUrl}/invoice` : `http://localhost:${PORT}/invoice`,
+        network: isDeployed ? [] : localIPs.map(ip => `http://${ip}:${PORT}/invoice`)
       }
     }
   });

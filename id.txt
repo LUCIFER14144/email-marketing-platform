@@ -1,1 +1,3 @@
-GMAIL1|gmail|samantharogger373@gmail.com|fiad jyyu lgaa tqoa|
+GMAIL_PRIMARY|Gmail|samantharogger373@gmail.com|fiad jyyu lgaa tqoa|John's Gmail
+
+

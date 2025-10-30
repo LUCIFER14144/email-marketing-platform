@@ -862,7 +862,7 @@ async function loadUserHtmlFiles() {
                             </div>
                         </div>
                         <div class="file-actions">
-                            <button class="action-btn preview-btn" onclick="previewHtmlFile('${file.filename || file.id}')">Preview</button>
+                            <button class="action-btn preview-btn" onclick="previewHtmlFile('${file.publicUrl}')">Preview</button>
                             <button class="action-btn configure-btn" onclick="configureHtmlFile('${file.id}')">Configure</button>
                             <button class="action-btn delete-btn" onclick="deleteHtmlFile('${file.id}')">Delete</button>
                         </div>
@@ -945,19 +945,13 @@ function toggleLinkSource() {
 }
 
 // Preview HTML file
-function previewHtmlFile(filename) {
-    // Get current user session to find the IP
-    fetch('/api/user/session')
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                const previewUrl = `/view/${data.user.ip}/${filename}`;
-                window.open(previewUrl, '_blank');
-            }
-        })
-        .catch(error => {
-            console.error('Error getting session:', error);
-        });
+function previewHtmlFile(publicUrl) {
+    // publicUrl already contains the full path, just open it
+    if (publicUrl) {
+        window.open(publicUrl, '_blank');
+    } else {
+        alert('Preview URL not available');
+    }
 }
 
 // Configure HTML file device settings
