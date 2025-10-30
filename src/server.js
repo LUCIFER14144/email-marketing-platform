@@ -979,12 +979,19 @@ const detectDevice = (userAgent) => {
 };
 
 // Smart link routing (detects device and serves appropriate HTML)
-app.get('/smart/:userIP/:filename', (req, res) => {
-  const { userIP, filename } = req.params;
+app.get('/smart/:username/:filename', (req, res) => {
+  const { username, filename } = req.params;
   const userAgent = req.headers['user-agent'] || '';
   const deviceType = detectDevice(userAgent);
   
-  const userFiles = userHtmlFiles[userIP] || [];
+  if (!userDataByUsername[username]?.htmlFiles) {
+    return res.status(404).send(`
+      <h1>File Not Found</h1>
+      <p>User "${username}" or files not found</p>
+    `);
+  }
+  
+  const userFiles = userDataByUsername[username].htmlFiles;
   
   // Find files with matching base name
   const matchingFiles = userFiles.filter(file => 
@@ -995,7 +1002,7 @@ app.get('/smart/:userIP/:filename', (req, res) => {
   if (matchingFiles.length === 0) {
     return res.status(404).send(`
       <h1>File Not Found</h1>
-      <p>The requested file "${filename}" was not found for user ${userIP}</p>
+      <p>The requested file "${filename}" was not found for user ${username}</p>
       <p>Available files: ${userFiles.map(f => f.originalName).join(', ')}</p>
     `);
   }
@@ -1009,22 +1016,29 @@ app.get('/smart/:userIP/:filename', (req, res) => {
   }
   
   // Log the access
-  console.log(`Smart link accessed: ${userIP}/${filename} - Device: ${deviceType} - Serving: ${targetFile.originalName}`);
+  console.log(`[${username}] Smart link accessed: ${filename} - Device: ${deviceType} - Serving: ${targetFile.originalName}`);
   
   // Serve the file
   res.sendFile(targetFile.filePath);
 });
 
 // Direct file viewing
-app.get('/view/:userIP/:filename', (req, res) => {
-  const { userIP, filename } = req.params;
-  const userFiles = userHtmlFiles[userIP] || [];
+// Direct file viewing (by username and filename)
+app.get('/view/:username/:filename', (req, res) => {
+  const { username, filename } = req.params;
   
+  if (!userDataByUsername[username]?.htmlFiles) {
+    return res.status(404).send('User or file not found');
+  }
+  
+  const userFiles = userDataByUsername[username].htmlFiles;
   const file = userFiles.find(f => f.filename === filename);
+  
   if (!file) {
     return res.status(404).send('File not found');
   }
   
+  console.log(`[${username}] Serving file: ${file.originalName}`);
   res.sendFile(file.filePath);
 });
 
@@ -1142,7 +1156,6 @@ app.get('/api/server-info', (req, res) => {
 app.get('/smart-route', (req, res) => {
   const desktopFileId = req.query.desktop;
   const mobileFileId = req.query.mobile;
-  const userIP = req.query.userIP || 'unknown';
   
   // Simple device detection based on user agent
   const userAgent = req.get('User-Agent') || '';
@@ -1163,16 +1176,18 @@ app.get('/smart-route', (req, res) => {
     return res.status(404).send('No HTML file configured for this device type');
   }
   
-  // Find the file in all user files
+  // Find the file in all users' files
   let targetFile = null;
-  let fileUserIP = null;
+  let fileUsername = null;
   
-  for (const [ip, files] of Object.entries(userHtmlFiles)) {
-    const file = files.find(f => f.id === targetFileId);
-    if (file) {
-      targetFile = file;
-      fileUserIP = ip;
-      break;
+  for (const [username, userData] of Object.entries(userDataByUsername)) {
+    if (userData.htmlFiles) {
+      const file = userData.htmlFiles.find(f => f.id === targetFileId);
+      if (file) {
+        targetFile = file;
+        fileUsername = username;
+        break;
+      }
     }
   }
   
@@ -1180,8 +1195,10 @@ app.get('/smart-route', (req, res) => {
     return res.status(404).send('HTML file not found');
   }
   
+  console.log(`[${fileUsername}] Smart route: Device=${isMobile ? 'mobile' : 'desktop'}, File=${targetFile.originalName}`);
+  
   // Redirect to the file view endpoint
-  res.redirect(`/view/${fileUserIP}/${targetFile.filename}`);
+  res.redirect(`/view/${fileUsername}/${targetFile.filename}`);
 });
 
 app.listen(PORT, '0.0.0.0', () => {

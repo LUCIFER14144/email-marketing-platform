@@ -643,42 +643,6 @@ document.addEventListener('DOMContentLoaded', function() {
         `).join('');
     }
 
-    // Generate button HTML
-    function generateButtonHtml(text, link, style, isBulk) {
-        let buttonStyles = {
-            primary: { bg: '#007bff', text: '#ffffff' },
-            success: { bg: '#28a745', text: '#ffffff' },
-            warning: { bg: '#ffc107', text: '#212529' },
-            danger: { bg: '#dc3545', text: '#ffffff' },
-            custom: { 
-                bg: isBulk ? document.getElementById('bulkBgColor').value : document.getElementById('bgColor').value,
-                text: isBulk ? document.getElementById('bulkTextColor').value : document.getElementById('textColor').value
-            }
-        };
-
-        const colors = buttonStyles[style];
-        
-        return `
-<div style="text-align: center; margin: 20px 0;">
-    <a href="${link}" style="
-        display: inline-block;
-        padding: 12px 30px;
-        background-color: ${colors.bg};
-        color: ${colors.text};
-        text-decoration: none;
-        border-radius: 6px;
-        font-weight: 600;
-        font-size: 16px;
-        font-family: Arial, sans-serif;
-        border: none;
-        cursor: pointer;
-        transition: all 0.3s ease;
-    " onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">
-        ${text}
-    </a>
-</div>`;
-    }
-
     // Insert text at cursor position
     function insertAtCursor(textarea, text) {
         const startPos = textarea.selectionStart;
@@ -744,6 +708,42 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+// Generate button HTML (moved outside DOMContentLoaded for global access)
+function generateButtonHtml(text, link, style, isBulk) {
+    let buttonStyles = {
+        primary: { bg: '#007bff', text: '#ffffff' },
+        success: { bg: '#28a745', text: '#ffffff' },
+        warning: { bg: '#ffc107', text: '#212529' },
+        danger: { bg: '#dc3545', text: '#ffffff' },
+        custom: { 
+            bg: isBulk ? document.getElementById('bulkBgColor')?.value : document.getElementById('bgColor')?.value,
+            text: isBulk ? document.getElementById('bulkTextColor')?.value : document.getElementById('textColor')?.value
+        }
+    };
+
+    const colors = buttonStyles[style] || buttonStyles.primary;
+    
+    return `
+<div style="text-align: center; margin: 20px 0;">
+    <a href="${link}" style="
+        display: inline-block;
+        padding: 12px 30px;
+        background-color: ${colors.bg};
+        color: ${colors.text};
+        text-decoration: none;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 16px;
+        font-family: Arial, sans-serif;
+        border: none;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    " onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">
+        ${text}
+    </a>
+</div>`;
+}
 
 // Load user session information
 async function loadUserSession() {
