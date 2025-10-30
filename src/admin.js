@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const { users, pendingSubscriptions, subscriptionPlans } = require('./data');
 
 // Admin dashboard - View all users
 router.get('/users', requireAdmin, (req, res) => {

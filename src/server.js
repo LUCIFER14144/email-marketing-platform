@@ -11,30 +11,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
-// Data structures for users and subscriptions
-const pendingVerifications = {};
-const subscriptionPlans = {
-  free: {
-    name: "Free Trial",
-    price: 0,
-    emailLimit: 10,
-    features: ["Basic email sending", "Single template"]
-  },
-  basic: {
-    name: "Basic Plan",
-    price: 9.99,
-    emailLimit: 1000,
-    features: ["Priority support", "Multiple templates", "Email tracking"]
-  },
-  premium: {
-    name: "Premium Plan",
-    price: 29.99,
-    emailLimit: 5000,
-    features: ["Unlimited templates", "Advanced analytics", "API access"]
-  }
-};
-
-const pendingSubscriptions = {};
+const { users, pendingVerifications, pendingSubscriptions, subscriptionPlans } = require('./data');
 
 // Admin credentials (store securely in environment variables in production)
 const ADMIN_CREDENTIALS = {
@@ -101,7 +78,6 @@ const htmlUpload = multer({
     const allowedTypes = /html|htm/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = file.mimetype === 'text/html' || file.mimetype === 'text/plain';
-    
     if (mimetype && extname) {
       return cb(null, true);
     } else {
@@ -137,29 +113,10 @@ app.use(session({
   saveUninitialized: false,
   cookie: { 
     secure: false, // set to true if using https
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
-  }
-}));
-app.use(cors());
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-// Serve static files from public directory
-const publicPath = path.resolve(__dirname, '..', 'public');
-console.log('Public path:', publicPath);
-app.use(express.static(publicPath));
-
-// Middleware to create user session based on IP
-app.use((req, res, next) => {
-  const userIP = req.ip || req.connection.remoteAddress || req.socket.remoteAddress || 
-    (req.connection.socket ? req.connection.socket.remoteAddress : null) || 
-    req.headers['x-forwarded-for']?.split(',')[0] || 'unknown';
-  
-  // Clean and normalize IP
-  const cleanIP = userIP.replace(/^::ffff:/, '');
-  req.userIP = cleanIP;
-  
-  // Initialize user session if doesn't exist
-  if (!userSessions[cleanIP]) {
+  // The following variables are now imported from './data' and should not be redefined here.
+  // const pendingVerifications = {};
+  // const subscriptionPlans = {};
+  // const pendingSubscriptions = {};
     userSessions[cleanIP] = {
       ip: cleanIP,
       createdAt: new Date(),
@@ -1246,3 +1203,21 @@ app.listen(PORT, '0.0.0.0', () => {
 });
 
 module.exports = app;
+
+// Ensure default admin user exists
+if (!users['admin']) {
+  users['admin'] = {
+    email: process.env.ADMIN_EMAIL || 'admin@yourdomain.com',
+    password: require('bcryptjs').hashSync(process.env.ADMIN_PASSWORD || 'admin123', 10),
+    verified: true,
+    createdAt: new Date(),
+    lastLogin: null,
+    subscription: {
+      type: 'premium',
+      emailsSent: 0,
+      emailLimit: 5000,
+      features: ['All features'],
+      validUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+    }
+  };
+}

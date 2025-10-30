@@ -3,6 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const nodemailer = require('nodemailer');
+const { users, subscriptionPlans } = require('./data');
 
 // Email configuration for verification emails
 const transporter = nodemailer.createTransport({
