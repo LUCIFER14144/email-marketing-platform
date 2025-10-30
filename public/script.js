@@ -39,9 +39,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Load available email providers
     loadEmailProviders();
-    
-    // Load server information
-    loadServerInfo();
 
     // Tab switching
     tabBtns.forEach(btn => {
@@ -290,75 +287,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function showProviderError(message) {
         providersList.innerHTML = `<div class="provider-item"><span class="provider-name" style="color: #dc3545;">❌ ${message}</span></div>`;
-    }
-
-    // Load server information
-    async function loadServerInfo() {
-        try {
-            const response = await fetch('/api/server-info');
-            const data = await response.json();
-            
-            if (data.success) {
-                displayServerInfo(data.serverInfo);
-            }
-        } catch (error) {
-            console.error('Failed to load server info:', error);
-        }
-    }
-
-    function displayServerInfo(info) {
-        const serverDetails = document.getElementById('serverDetails');
-        
-        const networkUrls = info.networkAccess || [];
-        const invoiceUrls = info.fullInvoiceUrls || {};
-        
-        serverDetails.innerHTML = `
-            <div class="server-access">
-                <div class="access-item">
-                    <strong>🏠 Local Access:</strong>
-                    <code>${info.localAccess}</code>
-                    <button onclick="copyToClipboard('${info.localAccess}')" class="copy-btn">📋</button>
-                </div>
-                
-                ${networkUrls.length > 0 ? `
-                    <div class="access-item">
-                        <strong>🌐 Network Access:</strong>
-                        ${networkUrls.map(url => `
-                            <div>
-                                <code>${url}</code>
-                                <button onclick="copyToClipboard('${url}')" class="copy-btn">📋</button>
-                            </div>
-                        `).join('')}
-                    </div>
-                ` : ''}
-                
-                <div class="access-item">
-                    <strong>📄 Invoice Template:</strong>
-                    <div>
-                        <code>${info.localAccess}/invoice</code>
-                        <button onclick="copyToClipboard('${info.localAccess}/invoice')" class="copy-btn">📋</button>
-                        <button onclick="window.open('${info.localAccess}/invoice', '_blank')" class="preview-btn">👁️ Preview</button>
-                    </div>
-                    ${networkUrls.length > 0 ? networkUrls.map(url => `
-                        <div>
-                            <code>${url}/invoice</code>
-                            <button onclick="copyToClipboard('${url}/invoice')" class="copy-btn">📋</button>
-                            <button onclick="window.open('${url}/invoice', '_blank')" class="preview-btn">👁️ Preview</button>
-                        </div>
-                    `).join('') : ''}
-                </div>
-                
-                <div class="help-text">
-                    <p><strong>💡 Usage Tips:</strong></p>
-                    <ul>
-                        <li>Use the <strong>Button Builder</strong> above to insert clickable buttons in emails</li>
-                        <li>Set button link to <code>${info.localAccess}/invoice</code> for invoice access</li>
-                        <li>Share network URLs for access from other devices on your network</li>
-                        <li>For worldwide access, use your public IP and configure port forwarding</li>
-                    </ul>
-                </div>
-            </div>
-        `;
     }
 
     // Copy to clipboard function
@@ -1013,13 +941,21 @@ async function deleteHtmlFile(fileId) {
 
 // Generate button function for the dedicated button builder tab
 function generateButton() {
-    const linkSource = document.querySelector('input[name="linkSource"]:checked').value;
+    console.log('Generate button called');
+    const linkSource = document.querySelector('input[name="linkSource"]:checked');
+    console.log('Link source:', linkSource ? linkSource.value : 'not found');
+    
+    if (!linkSource) {
+        alert('Please select a link source (External URL or Uploaded HTML File)');
+        return;
+    }
+    
     const buttonText = document.getElementById('buttonText').value;
     const buttonStyle = document.getElementById('buttonStyle').value;
     
     let buttonUrl = '';
     
-    if (linkSource === 'external') {
+    if (linkSource.value === 'external') {
         buttonUrl = document.getElementById('buttonUrl').value;
         if (!buttonUrl) {
             alert('Please enter a button URL');
@@ -1028,6 +964,9 @@ function generateButton() {
     } else {
         const desktopHtml = document.getElementById('desktopHtml').value;
         const mobileHtml = document.getElementById('mobileHtml').value;
+        
+        console.log('Desktop HTML selected:', desktopHtml);
+        console.log('Mobile HTML selected:', mobileHtml);
         
         if (!desktopHtml && !mobileHtml) {
             alert('Please select at least one HTML file');
@@ -1039,7 +978,10 @@ function generateButton() {
         if (desktopHtml) params.append('desktop', desktopHtml);
         if (mobileHtml) params.append('mobile', mobileHtml);
         
-        buttonUrl = `/smart-route?${params.toString()}`;
+        // Get current host
+        const host = window.location.origin;
+        buttonUrl = `${host}/smart-route?${params.toString()}`;
+        console.log('Generated smart route URL:', buttonUrl);
     }
     
     if (!buttonText) {
@@ -1050,6 +992,8 @@ function generateButton() {
     // Generate button HTML
     const buttonHtml = generateButtonHtml(buttonText, buttonUrl, buttonStyle, false);
     
+    console.log('Generated button HTML:', buttonHtml);
+    
     // Show preview
     const previewContainer = document.getElementById('previewContainer');
     const buttonPreview = document.getElementById('buttonPreview');
@@ -1057,18 +1001,27 @@ function generateButton() {
     const buttonHtmlTextarea = document.getElementById('buttonHtml');
     const buttonInfo = document.getElementById('buttonInfo');
     
-    previewContainer.innerHTML = buttonHtml;
-    buttonHtmlTextarea.value = buttonHtml;
-    
-    // Show info about the button
-    if (linkSource === 'uploaded') {
-        buttonInfo.textContent = '🎯 Smart button: Will automatically route users to the correct HTML file based on their device type (mobile/desktop)';
-    } else {
-        buttonInfo.textContent = '🔗 External link button: Will direct users to the specified URL with tracking';
+    if (previewContainer) {
+        previewContainer.innerHTML = buttonHtml;
     }
     
-    buttonPreview.style.display = 'block';
-    buttonCode.style.display = 'block';
+    if (buttonHtmlTextarea) {
+        buttonHtmlTextarea.value = buttonHtml;
+    }
+    
+    if (buttonInfo) {
+        // Show info about the button
+        if (linkSource.value === 'uploaded') {
+            buttonInfo.textContent = '🎯 Smart button: Will automatically route users to the correct HTML file based on their device type (mobile/desktop)';
+        } else {
+            buttonInfo.textContent = '🔗 External link button: Will direct users to the specified URL';
+        }
+    }
+    
+    if (buttonPreview) buttonPreview.style.display = 'block';
+    if (buttonCode) buttonCode.style.display = 'block';
+    
+    console.log('Button generation complete');
 }
 
 // Copy button code to clipboard
