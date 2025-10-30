@@ -97,7 +97,7 @@ let userHtmlFiles = {}; // Store uploaded HTML files per user
 let userProviders = {}; // Store SMTP providers per user
 
 // User authentication storage
-let users = {}; // Store registered users: { username: { password: hash, ip: string, createdAt: date } }
+// ...users is imported from ./data.js...
 let userDataByUsername = {}; // Map username to their data
 
 // Middleware
