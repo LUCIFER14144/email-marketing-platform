@@ -331,7 +331,7 @@ const parseEmailList = (filePath, fileType) => {
 };
 
 // Generate tracking pixel and links
-const generateTrackingContent = (campaignId, recipientEmail, originalContent) => {
+const generateTrackingContent = (campaignId, recipientEmail, originalContent, req) => {
   const trackingId = uuidv4();
   
   // Store tracking info
@@ -344,15 +344,18 @@ const generateTrackingContent = (campaignId, recipientEmail, originalContent) =>
     clicks: []
   };
   
+  // Get base URL from environment or request
+  const baseUrl = process.env.DEPLOYED_URL || `${req.protocol}://${req.get('host')}`;
+  
   // Add tracking pixel
-  const trackingPixel = `<img src="http://localhost:${PORT}/track/open/${trackingId}" width="1" height="1" style="display:none;" />`;
+  const trackingPixel = `<img src="${baseUrl}/track/open/${trackingId}" width="1" height="1" style="display:none;" />`;
   
   // Replace links with tracked links
   const trackedContent = originalContent.replace(
     /<a\s+href="([^"]+)"([^>]*)>/gi,
     (match, url, attributes) => {
       const linkId = uuidv4();
-      return `<a href="http://localhost:${PORT}/track/click/${trackingId}/${linkId}?url=${encodeURIComponent(url)}"${attributes}>`;
+      return `<a href="${baseUrl}/track/click/${trackingId}/${linkId}?url=${encodeURIComponent(url)}"${attributes}>`;
     }
   );
   
@@ -756,7 +759,7 @@ app.post('/api/send-bulk', async (req, res) => {
         
         // Add tracking if enabled
         if (trackingEnabled) {
-          emailContent = generateTrackingContent(campaignId, recipient.email, message);
+          emailContent = generateTrackingContent(campaignId, recipient.email, message, req);
         }
         
         const mailOptions = {

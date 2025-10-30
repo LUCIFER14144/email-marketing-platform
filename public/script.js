@@ -1043,10 +1043,15 @@ function copyButtonCode() {
 function insertButtonToBody() {
     const buttonHtml = document.getElementById('buttonHtml').value;
     
+    if (!buttonHtml) {
+        alert('Please generate a button first!');
+        return;
+    }
+    
     // Try to insert into single email tab
     const singleMessage = document.getElementById('message');
     if (singleMessage) {
-        const cursorPos = singleMessage.selectionStart;
+        const cursorPos = singleMessage.selectionStart || 0;
         const textBefore = singleMessage.value.substring(0, cursorPos);
         const textAfter = singleMessage.value.substring(cursorPos);
         singleMessage.value = textBefore + '\n\n' + buttonHtml + '\n\n' + textAfter;
@@ -1055,101 +1060,13 @@ function insertButtonToBody() {
     // Also try to insert into bulk email tab
     const bulkMessage = document.getElementById('bulkMessage');
     if (bulkMessage) {
-        const cursorPos = bulkMessage.selectionStart;
+        const cursorPos = bulkMessage.selectionStart || 0;
         const textBefore = bulkMessage.value.substring(0, cursorPos);
         const textAfter = bulkMessage.value.substring(cursorPos);
         bulkMessage.value = textBefore + '\n\n' + buttonHtml + '\n\n' + textAfter;
     }
     
     alert('Button inserted into email body! Switch to the Single Email or Bulk Email tab to see it.');
-}
-
-// Generate smart button with device-specific routing
-function generateButton() {
-    const linkSource = document.querySelector('input[name="linkSource"]:checked').value;
-    const buttonText = document.getElementById('buttonText').value || 'Click Here';
-    const buttonStyle = document.getElementById('buttonStyle').value;
-    
-    let buttonUrl = '';
-    let buttonInfo = '';
-    
-    if (linkSource === 'external') {
-        buttonUrl = document.getElementById('buttonUrl').value;
-        if (!buttonUrl) {
-            alert('Please enter a button URL.');
-            return;
-        }
-        buttonInfo = 'External link - same for all devices';
-    } else {
-        const desktopHtml = document.getElementById('desktopHtml').value;
-        const mobileHtml = document.getElementById('mobileHtml').value;
-        
-        if (!desktopHtml && !mobileHtml) {
-            alert('Please select at least one HTML file (desktop or mobile).');
-            return;
-        }
-        
-        // Create smart routing URL
-        buttonUrl = '/api/html/smart-route';
-        if (desktopHtml && mobileHtml) {
-            buttonUrl += `?desktop=${encodeURIComponent(desktopHtml)}&mobile=${encodeURIComponent(mobileHtml)}`;
-            buttonInfo = 'Smart routing - different files for desktop and mobile';
-        } else if (desktopHtml) {
-            buttonUrl += `?file=${encodeURIComponent(desktopHtml)}`;
-            buttonInfo = 'Single file - same for all devices';
-        } else if (mobileHtml) {
-            buttonUrl += `?file=${encodeURIComponent(mobileHtml)}`;
-            buttonInfo = 'Single file - same for all devices';
-        }
-    }
-    
-    // Generate button HTML
-    const buttonHtml = generateButtonHtml(buttonText, buttonUrl, buttonStyle, false);
-    
-    // Update preview and code sections
-    const previewContainer = document.getElementById('previewContainer');
-    const buttonHtmlTextarea = document.getElementById('buttonHtml');
-    const buttonInfoElement = document.getElementById('buttonInfo');
-    
-    if (previewContainer) {
-        previewContainer.innerHTML = buttonHtml;
-    }
-    
-    if (buttonHtmlTextarea) {
-        buttonHtmlTextarea.value = buttonHtml;
-    }
-    
-    if (buttonInfoElement) {
-        buttonInfoElement.textContent = buttonInfo;
-        buttonInfoElement.style.color = linkSource === 'uploaded' ? '#28a745' : '#007bff';
-    }
-    
-    // Show the preview and code sections
-    document.getElementById('buttonPreview').style.display = 'block';
-    document.getElementById('buttonCode').style.display = 'block';
-}
-
-// Copy button code to clipboard
-function copyButtonCode() {
-    const buttonHtml = document.getElementById('buttonHtml');
-    buttonHtml.select();
-    document.execCommand('copy');
-    alert('Button HTML code copied to clipboard!');
-}
-
-// Insert button into email body
-function insertButtonToBody() {
-    const buttonHtml = document.getElementById('buttonHtml').value;
-    const messageField = document.getElementById('message');
-    
-    if (messageField && buttonHtml) {
-        const currentValue = messageField.value;
-        const newValue = currentValue + (currentValue ? '\n\n' : '') + buttonHtml;
-        messageField.value = newValue;
-        alert('Button inserted into email body!');
-    } else {
-        alert('No button code to insert or message field not found.');
-    }
 }
 
 // Logout function
